@@ -1,6 +1,8 @@
 {
     "files.associations": {
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "adc.h": "c",
+        "ldr.h": "c"
     },
     "idf.flashType": "UART"
 }
