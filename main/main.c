@@ -9,7 +9,7 @@
 
 
 void Read_ADC() {
-    int max_speed =255;
+    int max_speed =200;
     int base_speed = 20;
     // int DK_adc[8] = {2937, 3289, 2514, 2696, 3094, 2251, 2654, 2620};
     int DK_adc[8] = {2537, 3247, 2125, 2245, 2633, 2198, 2383, 2583};
@@ -51,7 +51,7 @@ void Read_ADC() {
     }
     else { 
     int a = 0; // Hệ số tăng tốc
-        int slow_down = 0; // Hệ số giảm tốc
+    int slow_down = 0; // Hệ số giảm tốc
 
         if (sensorState[0] || sensorState[1] || sensorState[2]) {
             // Line nằm ở bên trái
@@ -68,8 +68,22 @@ void Read_ADC() {
             set_pwm_duty(base_speed - slow_down, base_speed + a); // Quay trái
         
         }
+        else if(sensorState[5] || sensorState[6] || sensorState[7]){
+            // Line nằm ở bên phải
+            if (sensorState[5]) {
+                a = max_speed * 2;
+                slow_down = base_speed / 3; // Giảm nhẹ bánh không rẽ
+            } else if (sensorState[6]) {
+                a = (2 * max_speed) / 3;
+                slow_down = base_speed/2;
+            } else if (sensorState[7]) {
+                a = max_speed;
+                slow_down = 2; // Giảm nhiều hơn để hỗ trợ rẽ gấp
+            }
+            set_pwm_duty(base_speed + a, base_speed - slow_down); // Quay phải
+        }
         else{
-            set_pwm_duty(0,max_speed / 3);
+            set_pwm_duty(max_speed / 4,0);
         }
     }
 vTaskDelay(pdMS_TO_TICKS(10)); // Đọc giá trị mỗi giây
