@@ -4,7 +4,7 @@
 #include "driver/ledc.h"
 #include "pwm.h"
 
-void configure_pwm() {
+void pwm_init() {
     // Cấu hình timer cho PWM với độ phân giải 8-bit
     ledc_timer_config_t pwm_timer = {
         .speed_mode = LEDC_HIGH_SPEED_MODE,

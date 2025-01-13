@@ -12,6 +12,6 @@ extern const adc_channel_t LDR_PINS[LDR_COUNT];
 extern adc_oneshot_unit_handle_t adc1_handle, adc2_handle;
 
 // Hàm cấu hình ADC
-void configure_adc();
+void adc_init();
 
 #endif // LDR_H

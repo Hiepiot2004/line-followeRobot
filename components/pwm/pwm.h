@@ -6,7 +6,7 @@
 #define PWM_PIN_B 15 // Động cơ phải 
 #define MAX_DUTY  255 
 
-void configure_pwm();
+void pwm_init();
 void set_pwm_duty(uint32_t duty_a, uint32_t duty_b);
 
 #endif 
