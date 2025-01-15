@@ -8,7 +8,15 @@
 #include "ldr.h"
 
 
-void Read_ADC() {
+
+// thuật toán PID
+void PID(){
+    float Kp = 0.5; // Hệ số P
+    float Ki = 0.0; // Hệ số I
+    float Kd = 0.8; // Hệ số D
+
+    float previous_error = 0;
+    float integral = 0;
     int max_speed =200;
     int base_speed = 20;
     // int DK_adc[8] = {2937, 3289, 2514, 2696, 3094, 2251, 2654, 2620};
@@ -34,10 +42,95 @@ void Read_ADC() {
     adc_oneshot_read(adc1_handle, LDR_PINS[2], &ldr_values[7]);
     sensorState[7] = (ldr_values[7] > DK_adc[7]) ? 1 : 0; // 1: có line, 0: không có line
 
-    // for (int i = 0; i < LDR_COUNT; i++) {
-    //     printf("LDR value %d: %d ", i, ldr_values[i]);
-    //     printf("state: %d\n", sensorState[i]);
-    // }
+    int position = 0;
+    int total_active_sensors = 0;
+
+    for (int i = 0; i < LDR_COUNT; i++) {
+        if (sensorState[i] == 1) {
+            position += (i - 3) * 100; // Đánh trọng số (-300 đến 400)
+            total_active_sensors++;
+        }
+    }
+
+    if (total_active_sensors > 0) {
+        position /= total_active_sensors; // Giá trị vị trí trung bình
+    } else {
+        // Nếu mất line, giữ nguyên lỗi trước đó
+        position = (previous_error > 0) ? 400 : -400;
+    }
+
+    // Tính toán lỗi (error)
+    float error = position;
+
+    // Tính toán thành phần PID
+    integral += error;                      // Thành phần tích phân
+    float derivative = error - previous_error; // Thành phần vi phân
+    float correction = Kp * error + Ki * integral + Kd * derivative;
+
+    // Giới hạn correction để đảm bảo an toàn
+    if (correction > max_speed) {
+        correction = max_speed;
+    } else if (correction < -max_speed) {
+        correction = -max_speed;
+    }
+
+    // Điều chỉnh tốc độ động cơ
+    int left_speed = base_speed + correction;
+    int right_speed = base_speed - correction;
+
+    // Đảm bảo tốc độ không vượt quá giới hạn
+    if (left_speed > max_speed) {
+        left_speed = max_speed;
+    } else if (left_speed < 0) {
+        left_speed = 0;
+    }
+
+    if (right_speed > max_speed) {
+        right_speed = max_speed;
+    } else if (right_speed < 0) {
+        right_speed = 0;
+    }
+
+    set_pwm_duty(left_speed, right_speed);
+
+    // Cập nhật lỗi trước đó
+    previous_error = error;
+
+    // Thời gian trễ để đọc lại cảm biến
+    vTaskDelay(pdMS_TO_TICKS(10));
+vTaskDelay(pdMS_TO_TICKS(10)); // Đọc giá trị mỗi giây
+}
+// thuật toán if else cơ bản 
+void Read_ADC() {
+    int max_speed =200;
+    int base_speed = 5;
+    // int DK_adc[8] = {2937, 3289, 2514, 2696, 3094, 2251, 2654, 2620};
+    int DK_adc[8] = {2537, 3247, 2125, 2245, 2633, 2198, 2383, 2583};
+    int sensorState[8];
+    int ldr_values[LDR_COUNT];
+    // đọc giá trị ADC1
+    adc_oneshot_read(adc2_handle, LDR_PINS[4], &ldr_values[0]);
+    sensorState[0] = (ldr_values[0] > DK_adc[0]) ? 1 : 0; // 1: có line, 0: không có line
+    adc_oneshot_read(adc2_handle, LDR_PINS[5], &ldr_values[1]);
+    sensorState[1] = (ldr_values[1] > DK_adc[1]) ? 1 : 0; // 1: có line, 0: không có line
+    adc_oneshot_read(adc2_handle, LDR_PINS[7], &ldr_values[2]);
+    sensorState[2] = (ldr_values[2] > DK_adc[2]) ? 1 : 0; // 1: có line, 0: không có line
+    adc_oneshot_read(adc2_handle, LDR_PINS[6], &ldr_values[3]);
+    sensorState[3] = (ldr_values[3] > DK_adc[3]) ? 1 : 0; // 1: có line, 0: không có line
+    // đọc giá trị ADC2
+    adc_oneshot_read(adc1_handle, LDR_PINS[1], &ldr_values[4]);
+    sensorState[4] = (ldr_values[4] > DK_adc[4]) ? 1 : 0; // 1: có line, 0: không có line
+    adc_oneshot_read(adc1_handle, LDR_PINS[0], &ldr_values[5]);
+    sensorState[5] = (ldr_values[5] > DK_adc[5]) ? 1 : 0; // 1: có line, 0: không có line
+    adc_oneshot_read(adc1_handle, LDR_PINS[3], &ldr_values[6]);
+    sensorState[6] = (ldr_values[6] > DK_adc[6]) ? 1 : 0; // 1: có line, 0: không có line
+    adc_oneshot_read(adc1_handle, LDR_PINS[2], &ldr_values[7]);
+    sensorState[7] = (ldr_values[7] > DK_adc[7]) ? 1 : 0; // 1: có line, 0: không có line
+
+    for (int i = 0; i < LDR_COUNT; i++) {
+        printf("LDR value %d: %d ", i, ldr_values[i]);
+        printf("state: %d\n", sensorState[i]);
+    }
     if (sensorState[3] == 1 || sensorState[4] == 1) {
         if(sensorState[3] == 1 && sensorState[4] == 0){ // nhích sang trái
             set_pwm_duty(base_speed - 5,base_speed+5);
@@ -51,42 +144,43 @@ void Read_ADC() {
     }
     else { 
     int a = 0; // Hệ số tăng tốc
-    int slow_down = 0; // Hệ số giảm tốc
+    int b = 0; // Hệ số giảm tốc
 
         if (sensorState[0] || sensorState[1] || sensorState[2]) {
             // Line nằm ở bên trái
             if (sensorState[2]) {
                 a = 2 * max_speed;
-                slow_down = base_speed/2; // Giảm nhẹ bánh không rẽ
+                b = base_speed/2; // Giảm nhẹ bánh không rẽ
             } else if (sensorState[1]) {
                 a = (2 * max_speed) / 3;
-                slow_down = base_speed ;
+                b = base_speed ;
             } else if (sensorState[0]) {
                 a = max_speed;
-                slow_down = base_speed; // Giảm nhiều hơn để hỗ trợ rẽ gấp
+                b = base_speed; // Giảm nhiều hơn để hỗ trợ rẽ gấp
             }
-            set_pwm_duty(base_speed - slow_down, base_speed + a); // Quay trái
+            set_pwm_duty(base_speed - b, base_speed + a); // Quay trái
         
         }
         else if(sensorState[5] || sensorState[6] || sensorState[7]){
             // Line nằm ở bên phải
             if (sensorState[5]) {
                 a = max_speed * 2;
-                slow_down = base_speed / 3; // Giảm nhẹ bánh không rẽ
+                b = base_speed / 3; // Giảm nhẹ bánh không rẽ
             } else if (sensorState[6]) {
                 a = (2 * max_speed) / 3;
-                slow_down = base_speed/2;
+                b = base_speed/2;
             } else if (sensorState[7]) {
                 a = max_speed;
-                slow_down = 2; // Giảm nhiều hơn để hỗ trợ rẽ gấp
+                b = 2; // Giảm nhiều hơn để hỗ trợ rẽ gấp
             }
-            set_pwm_duty(base_speed + a, base_speed - slow_down); // Quay phải
+            set_pwm_duty(base_speed + a, base_speed - b); // Quay phải
         }
         else{
             set_pwm_duty(max_speed / 4,0);
         }
     }
-vTaskDelay(pdMS_TO_TICKS(10)); // Đọc giá trị mỗi giây
+    
+vTaskDelay(pdMS_TO_TICKS(5)); // Đọc giá trị mỗi giây
 
 }
 void tinh_trung_binh(int trung_binh[LDR_COUNT]) {
@@ -122,6 +216,9 @@ void app_main() {
     adc_init();
     
     while (1) {
-      Read_ADC();
+        Read_ADC();
+        // PID();
+    //   set_pwm_duty(254,254);
+    //   vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
